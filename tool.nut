@@ -59,17 +59,17 @@ function work(player, pos) {
 	}
 
  	local tp = pos+coord3d(0,0,-2)
-	local tile = tile_x(tp.x,tp.y,tp.z)
+	tile = tile_x(tp.x,tp.y,tp.z)
 	if(!tile.is_ground() || !tile.has_ways()) {
 		return "Tile " + tp.tostring() + " is not a valid ground!"
 	}
-	local tp = pos+coord3d(0,0,-3)
-	local tile = tile_x(tp.x,tp.y,tp.z)
+	tp = pos+coord3d(0,0,-3)
+	tile = tile_x(tp.x,tp.y,tp.z)
 	if((!tile.is_ground() || !tile.has_ways()) && tile.get_slope() != 0) {
 		return "Tile " + tp.tostring() + " is not a valid ground!"
 	}
-	local tp = pos+coord3d(0,0,-4)
-	local tile = tile_x(tp.x,tp.y,tp.z)
+	tp = pos+coord3d(0,0,-4)
+	tile = tile_x(tp.x,tp.y,tp.z)
 	if((!tile.is_ground() || !tile.has_ways()) && (tile.get_slope() == 8 || tile.get_slope() == 24 || tile.get_slope() == 56 || tile.get_slope() == 72)) {
 		return "Tile " + tp.tostring() + " is not a valid ground!"
 	}
@@ -119,26 +119,26 @@ function work(player, pos) {
 		return "Not direction or Not applicable way"
 	}
 
-	local tp = pos+coord3d(tp_x,tp_y,-4)
+	tp = pos+coord3d(tp_x,tp_y,-4)
 	local err = collate_tile(pos,tp)
 	if(err!=null) {
 		return err
 	}
 
-	local tp = pos+coord3d(tp_x*2,tp_y*2,-4)
-	local err = collate_tile(pos,tp)
+	tp = pos+coord3d(tp_x*2,tp_y*2,-4)
+	err = collate_tile(pos,tp)
 	if(err!=null) {
 		return err
 	}
 
 	command_x.set_slope(player, pos, 83)
 
-	local tp = pos+coord3d(tp_x,tp_y,-1)
+	tp = pos+coord3d(tp_x,tp_y,-1)
 	make_slope(player,tp)
 	command_x.build_way(player, start, tp, desc, true)
 	command_x.set_slope(player, tp, 83)
 
-	local tp = pos+coord3d(tp_x*2,tp_y*2,-2)
+	tp = pos+coord3d(tp_x*2,tp_y*2,-2)
 	make_slope(player,tp)
 	command_x.set_slope(player, tp, slope)
 }
