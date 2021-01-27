@@ -37,17 +37,6 @@ function make_slope(player,tp){
 	}
 }
 
-function get_desc(waytype,name) {
-	local sts = [st_flat, st_elevated, st_tram]
-	foreach (st in sts) {
-		local desc_all = way_desc_x.get_available_ways(waytype, st)
-		foreach (desc in desc_all) {
-			if(desc.get_name()==name) {
-				return desc
-			}
-		}
-	}
-}
 
 function work(player, pos) {
 	local tile = tile_x(pos.x, pos.y, pos.z)
@@ -75,14 +64,9 @@ function work(player, pos) {
 	}
 
 	local map_obj = map_object_x(pos.x,pos.y,pos.z,mo_way)
-
-	local name = map_obj.get_name()
 	local waytype = map_obj.get_waytype()
 
 	local direction = tile.get_way_dirs(waytype)
-
-	local desc = get_desc(waytype, name)
-	local start = pos+coord3d(0,0,-1)
 
 	local tp_x
 	local tp_y
@@ -135,8 +119,14 @@ function work(player, pos) {
 
 	tp = pos+coord3d(tp_x,tp_y,-1)
 	make_slope(player,tp)
+
+	tile = tile_x(pos.x, pos.y, pos.z)
+	local desc = tile.find_object(mo_way).get_desc()
+	local start = pos+coord3d(0,0,-1)
+
 	command_x.build_way(player, start, tp, desc, true)
 	command_x.set_slope(player, tp, 83)
+
 
 	tp = pos+coord3d(tp_x*2,tp_y*2,-2)
 	make_slope(player,tp)
