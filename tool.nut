@@ -1,134 +1,114 @@
-function collate_tile(pos,tp) {
-	local height = square_x(tp.x, tp.y).get_ground_tile().z
-	if(pos.z > height){
-		return coord3d(tp.x,tp.y,height).tostring() + " is low"
-	}
-	local tile = tile_x(tp.x,tp.y,height)
-	local slope_ground = tile.get_slope()
-	while(height >= tp.z){
-		local slope_direction = tile.get_slope()
-		local is_tile_empty = tile.is_empty()
-		if(!is_tile_empty && height > tp.z + 1) {
-			return "Tile " + coord3d(tp.x,tp.y,height).tostring() + " is not a valid ground!"
-		}
-		else if(!is_tile_empty && height == tp.z + 1 && slope_direction != 0){
-			return "Tile " + coord3d(tp.x,tp.y,height).tostring() + " is not a valid ground!"
-		}
-		else if(!is_tile_empty && height == tp.z && (slope_direction == 8 || slope_direction == 24 || slope_direction == 56 || slope_direction == 72)){
-			return "Tile " + coord3d(tp.x,tp.y,height).tostring() + " is not a valid ground!"
-		}
-		height--
-		tile = tile_x(tp.x,tp.y,height)
-	}
-}
-
-function make_slope(player,tp){
-	local height = square_x(tp.x, tp.y).get_ground_tile().z
-	local tile = tile_x(tp.x, tp.y, height)
-	local target = coord3d(tp.x,tp.y,height)
-	if(tile.get_slope() != 0){
-		command_x.set_slope(player, target, 83)
-	}
-	while(height > tp.z){
-		command_x.set_slope(player, target, 83)
-
-		height--
-		target = coord3d(tp.x,tp.y,height)
-	}
-}
-
-
 function work(player, pos) {
-	local tile = tile_x(pos.x, pos.y, pos.z)
-	if(!tile.is_ground() || !tile.has_ways()) {
+	local pos_tile = tile_x(pos.x, pos.y, pos.z)
+	local err
+	if(!pos_tile.is_ground() || !pos_tile.has_ways()) {
 		return "Tile " + pos.tostring() + " is not a valid ground!"
 	}
-	if(tile.get_slope() != 0){
+	else if(pos_tile.get_slope() != 0) {
 		return "Please use on flat ground"
 	}
-
- 	local tp = pos+coord3d(0,0,-2)
-	tile = tile_x(tp.x,tp.y,tp.z)
-	if(!tile.is_ground() || !tile.has_ways()) {
-		return "Tile " + tp.tostring() + " is not a valid ground!"
-	}
-	tp = pos+coord3d(0,0,-3)
-	tile = tile_x(tp.x,tp.y,tp.z)
-	if((!tile.is_ground() || !tile.has_ways()) && tile.get_slope() != 0) {
-		return "Tile " + tp.tostring() + " is not a valid ground!"
-	}
-	tp = pos+coord3d(0,0,-4)
-	tile = tile_x(tp.x,tp.y,tp.z)
-	if((!tile.is_ground() || !tile.has_ways()) && (tile.get_slope() == 8 || tile.get_slope() == 24 || tile.get_slope() == 56 || tile.get_slope() == 72)) {
-		return "Tile " + tp.tostring() + " is not a valid ground!"
-	}
-
-	local map_obj = map_object_x(pos.x,pos.y,pos.z,mo_way)
-	local waytype = map_obj.get_waytype()
-
-	local direction = tile.get_way_dirs(waytype)
-
-	local tp_x
-	local tp_y
-	local slope
-
-	// 下方向
-	if(direction == 1){
-		tp_x = 0
-		tp_y = 1
-		slope = 8
-	}
-
-	// 左方向
-	else if(direction == 2){
-		tp_x = -1
-		tp_y = 0
-		slope = 56
-	}
-
-	// 上方向
-	else if(direction == 4){
-		tp_x = 0
-		tp_y = -1
-		slope = 72
-	}
-
-	// 右方向
-	else if(direction == 8){
-		tp_x = 1
-		tp_y = 0
-		slope = 24
-	}
-	else{
-		return "Not direction or Not applicable way"
-	}
-
-	tp = pos+coord3d(tp_x,tp_y,-4)
-	local err = collate_tile(pos,tp)
-	if(err!=null) {
+	else if(err = command_x.can_set_slope(player, pos, 83)) {
 		return err
 	}
 
-	tp = pos+coord3d(tp_x*2,tp_y*2,-4)
-	err = collate_tile(pos,tp)
-	if(err!=null) {
+
+	local waytype = pos_tile.find_object(mo_way).get_waytype()
+	local direction = pos_tile.get_way_dirs(waytype)
+
+	if(!dir.is_single(direction)){
+		// dirが一方向ではないとき
+		return "Please use single direction"
+	}
+	else if(waytype == 1 && pos_tile.has_way(wt_rail) && pos_tile.get_way_dirs(wt_rail) != direction){
+		// 道路と路面軌道のdirが異なるとき
+		return "Direction is not match"
+	}
+
+	local back_dir = dir.backward(direction)
+	local diff = dir.to_coord(back_dir)
+
+	err = collate_tile(pos, diff)
+	if(err) {
+		return err
+	}
+
+	err = collate_tile(pos, diff*2)
+	if(err) {
 		return err
 	}
 
 	command_x.set_slope(player, pos, 83)
 
-	tp = pos+coord3d(tp_x,tp_y,-1)
-	make_slope(player,tp)
+	local first_tp = pos + diff
+	local desc = pos_tile.find_object(mo_way).get_desc()
+	local start = pos + coord3d(0, 0, -1)
+	local first_ground_tile = square_x(first_tp.x, first_tp.y).get_ground_tile()
+	if(first_ground_tile.z == pos.z - 2){
+		// 隣のマスのheightが-2のとき
+		first_tp.z -= 2
+		if(first_ground_tile.get_slope() != dir.to_slope(direction)){
+			command_x.set_slope(player, first_tp, dir.to_slope(direction))
+		}
+		command_x.build_way(player, start, first_tp, desc, true)
+	}
+	else{
+		first_tp.z--
+		make_slope(player, first_tp, first_ground_tile)
+		command_x.build_way(player, start, first_tp, desc, true)
+		command_x.set_slope(player, first_tp, 83)
+	}
 
-	tile = tile_x(pos.x, pos.y, pos.z)
-	local desc = tile.find_object(mo_way).get_desc()
-	local start = pos+coord3d(0,0,-1)
 
-	command_x.build_way(player, start, tp, desc, true)
-	command_x.set_slope(player, tp, 83)
+	local second_tp = pos + diff*2 + coord3d(0, 0, -2)
+	make_slope(player, second_tp, square_x(second_tp.x, second_tp.y).get_ground_tile())
+
+	local slope = dir.to_slope(back_dir) * 2
+	command_x.set_slope(player, second_tp, slope)
+}
 
 
-	tp = pos+coord3d(tp_x*2,tp_y*2,-2)
-	make_slope(player,tp)
-	command_x.set_slope(player, tp, slope)
+function collate_tile(pos, diff) {
+	local tp = pos + diff
+	local height = square_x(tp.x, tp.y).get_ground_tile().z
+	local target = pos.z - 5
+	if(target + 3 > height){
+		return coord3d(tp.x, tp.y, height).tostring() + " is low"
+	}
+
+	while(height >= target){
+		local tile = tile_x(tp.x, tp.y, height)
+		if(!tile.is_empty() && is_already_use(tile.get_slope(), height, target)) {
+			return "Tile " + coord3d(tp.x, tp.y, height).tostring() + " is already in use!"
+		}
+		height--
+	}
+}
+
+function make_slope(player, tp, ground_tile){
+	local tile_pos = coord3d(tp.x, tp.y, ground_tile.z)
+	if(ground_tile.get_slope() != 0){
+		command_x.set_slope(player, tile_pos, 83)
+	}
+	while(tile_pos.z > tp.z){
+		command_x.set_slope(player, tile_pos, 83)
+		tile_pos.z--
+	}
+}
+
+function is_double_height(dir){
+	if(dir == 8 || dir == 24 || dir == 56 || dir == 72){
+		return true
+	}
+	else{
+		return false
+	}
+}
+
+function is_already_use(dir, height, target){
+	if (height > target + 1 || (height == target + 1 && dir != 0) || (height == target && is_double_height(dir))){
+		return true
+	}
+	else{
+		return false
+	}
 }
