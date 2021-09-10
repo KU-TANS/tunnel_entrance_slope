@@ -1,4 +1,4 @@
 title=tunnel_entrance_slope
 type=one_click
 tooltip=Click on the edge of the way to create slope.
-restart=1
+restart=0

@@ -4,42 +4,38 @@ function work(player, pos) {
 	if(!pos_tile.is_ground() || !pos_tile.has_ways()) {
 		return "Tile " + pos.tostring() + " is not a valid ground!"
 	}
-	else if(pos_tile.get_slope() != 0) {
-		return "Please use on flat ground"
+
+	local waytype = pos_tile.find_object(mo_way).get_waytype()
+	local direction = pos_tile.get_way_dirs(waytype)
+	if(pos_tile.get_slope()){
+		// 下りスロープの場合も実行する
+		if(pos_tile.get_slope() == dir.to_slope(direction)){
+			pos.z++
+		}
+		else{
+			return "Please use on flat ground"
+		}
 	}
 	else if(err = command_x.can_set_slope(player, pos, 83)) {
 		return err
 	}
 
 
-	local waytype = pos_tile.find_object(mo_way).get_waytype()
-	local direction = pos_tile.get_way_dirs(waytype)
-
-	if(!dir.is_single(direction)){
-		// dirが一方向ではないとき
-		return "Please use single direction"
-	}
-	else if(waytype == 1 && pos_tile.has_way(wt_rail) && pos_tile.get_way_dirs(wt_rail) != direction){
-		// 道路と路面軌道のdirが異なるとき
-		return "Direction is not match"
-	}
-
 	local back_dir = dir.backward(direction)
 	local diff = dir.to_coord(back_dir)
 
-	err = collate_tile(pos, diff)
-	if(err) {
+	local first_tp = pos + diff
+	if(err = collate_tile(pos, first_tp)) {
 		return err
 	}
 
-	err = collate_tile(pos, diff*2)
-	if(err) {
+	local second_tp = pos + diff*2
+	if(err = collate_tile(pos, second_tp)) {
 		return err
 	}
 
 	command_x.set_slope(player, pos, 83)
 
-	local first_tp = pos + diff
 	local desc = pos_tile.find_object(mo_way).get_desc()
 	local start = pos + coord3d(0, 0, -1)
 	local first_ground_tile = square_x(first_tp.x, first_tp.y).get_ground_tile()
@@ -59,16 +55,14 @@ function work(player, pos) {
 	}
 
 
-	local second_tp = pos + diff*2 + coord3d(0, 0, -2)
+	second_tp.z -= 2
 	make_slope(player, second_tp, square_x(second_tp.x, second_tp.y).get_ground_tile())
 
-	local slope = dir.to_slope(back_dir) * 2
-	command_x.set_slope(player, second_tp, slope)
+	command_x.set_slope(player, second_tp, dir.to_slope(back_dir) * 2)
 }
 
 
-function collate_tile(pos, diff) {
-	local tp = pos + diff
+function collate_tile(pos, tp) {
 	local height = square_x(tp.x, tp.y).get_ground_tile().z
 	local target = pos.z - 5
 	if(target + 3 > height){
@@ -96,6 +90,7 @@ function make_slope(player, tp, ground_tile){
 }
 
 function is_double_height(dir){
+	// dir % 8 == 0
 	if(dir == 8 || dir == 24 || dir == 56 || dir == 72){
 		return true
 	}
