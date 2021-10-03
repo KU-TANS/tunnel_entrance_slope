@@ -1,4 +1,4 @@
-function work(player, pos) {
+function work(player, pos, key) {
 	local pos_tile = tile_x(pos.x, pos.y, pos.z)
 	local err
 	if(!pos_tile.is_ground() || !pos_tile.has_ways()) {
@@ -36,7 +36,8 @@ function work(player, pos) {
 
 	command_x.set_slope(player, pos, 83)
 
-	local desc = pos_tile.find_object(mo_way).get_desc()
+	local way = pos_tile.get_way(waytype)
+	local desc = way.get_desc()
 	local start = pos + coord3d(0, 0, -1)
 	local first_ground_tile = square_x(first_tp.x, first_tp.y).get_ground_tile()
 	if(first_ground_tile.z == pos.z - 2){
@@ -59,6 +60,25 @@ function work(player, pos) {
 	make_slope(player, second_tp, square_x(second_tp.x, second_tp.y).get_ground_tile())
 
 	command_x.set_slope(player, second_tp, dir.to_slope(back_dir) * 2)
+
+	if(key & 2){
+		// Ctrl押下でトンネルも建設
+		local tunnel_list = tunnel_desc_x.get_available_tunnels(waytype)
+		if(!tunnel_list.len()){
+			return "tunnel not found!"
+		}
+
+		local tunnel = select_best_speed_item(way.get_max_speed(), tunnel_list)
+
+		local t = command_x(tool_build_tunnel)
+		t.set_flags(2)
+		t.work(player, second_tp, tunnel.get_name())
+
+		local end_pos = second_tp + diff
+		if(err = t.work(player, second_tp, end_pos, tunnel.get_name())){
+			return err
+		}
+	}
 }
 
 
@@ -91,19 +111,41 @@ function make_slope(player, tp, ground_tile){
 
 function is_double_height(dir){
 	// dir % 8 == 0
-	if(dir == 8 || dir == 24 || dir == 56 || dir == 72){
-		return true
-	}
-	else{
-		return false
-	}
+	return dir == 8 || dir == 24 || dir == 56 || dir == 72
 }
 
 function is_already_use(dir, height, target){
-	if (height > target + 1 || (height == target + 1 && dir != 0) || (height == target && is_double_height(dir))){
-		return true
+	return height > target + 1 || (height == target + 1 && dir != 0) || (height == target && is_double_height(dir))
+}
+
+function select_best_speed_item(max, obj_list){
+	local best_obj = null
+	local best_speed_diff = null
+	foreach(obj in obj_list){
+		local obj_topspeed = obj.get_topspeed()
+		if(best_obj == null){
+			if (obj_topspeed == max){
+				return obj
+			}
+			else{
+				best_obj = obj
+				best_speed_diff = get_speed_diff(obj_topspeed, max)
+			}
+		}
+		else if(obj_topspeed == max){
+			return obj
+		}
+		else{
+			local diff = get_speed_diff(obj_topspeed, max)
+			if(best_speed_diff > diff){
+				best_obj = obj
+				best_speed_diff = diff
+			}
+		}
 	}
-	else{
-		return false
-	}
+	return best_obj
+}
+
+function get_speed_diff(obj_topspeed, max){
+	return obj_topspeed > max ? obj_topspeed - max : max - obj_topspeed
 }
