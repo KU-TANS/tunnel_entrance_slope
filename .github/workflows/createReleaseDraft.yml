@@ -1,0 +1,26 @@
+name: Create Release Draft
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Create ZIP File
+        shell: pwsh
+        run: |
+          Copy-Item -Path ./README.md -Destination ./README.txt
+          Compress-Archive -Path (Get-ChildItem * -Exclude .* -Name) -DestinationPath ./tunnel_entrance_slope_${{github.ref_name}}.zip -Force
+
+      - name: Create Release
+        uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
+        with:
+          files: tunnel_entrance_slope_${{github.ref_name}}.zip
+          name: tunnel_entrance_slope ${{github.ref_name}}
+          draft: true
